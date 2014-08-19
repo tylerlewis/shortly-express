@@ -1,6 +1,7 @@
 var Bookshelf = require('bookshelf');
 var path = require('path');
 
+
 var db = Bookshelf.initialize({
   client: 'sqlite3',
   connection: {
@@ -58,5 +59,8 @@ db.knex.schema.hasTable('users').then(function(exists) {
   }
 });
 
+// User should have access to their own URLs
+// This is done by displaying/querying links owned by the current user
+//
 
 module.exports = db;

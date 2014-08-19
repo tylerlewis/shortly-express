@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
+var bcrypt = require('bcrypt-nodejs');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -10,6 +10,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+
 
 var app = express();
 
@@ -94,7 +95,7 @@ app.post('/signup', function(req, res) {
     // Creating new user model with attributes username and password. Fetch it. If found, then
     if (found) {
       // Tell the user to pick a different username
-      console.log("found user...");
+      console.log("FOUND USER!!!!!!!!!!!!!!!!!!!!!!!");
       res.send(200, found.attributes);
     }
     // Otherwise create/save that user in our db.
@@ -104,12 +105,15 @@ app.post('/signup', function(req, res) {
         username: username,
         password: password
       });
-      console.log("NEW USER: ", user);
+
+      console.log(user, "this is the user object after it gets instantiated");
       user.save().then(function(newUser) {
+        console.log('NEW USER: ', newUser);
         Users.add(newUser);
-        // res.send(200, newUser);
-        // Send (redirect URL) to index.html instead of rendering it
-        res.render('index');
+        console.log(newUser, "After Users.add");
+        // Give new user a session token/log user in
+        // Redirect to user's home page
+        res.redirect(200, 'index');
        // Users[0].fetch();
       });
     }
@@ -124,10 +128,17 @@ app.post('/login', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
+  // Potentially this could be refactored into a checkUser function
+  var checkUser = function(username, password, callback) {
+
+  };
+
   new User({username: username}).fetch().then(function(found) {
     if(found) {
       // Check the given password against the hashed password stored for username in database
-
+      console.log('FOUND USER: ',found);
+      //checkUser(user, cb);
+      // Where are we going to push the password to get hashed and then validate it in the db?
         // If password checks out,
           // Give the user a session token
           // Redirect to their individualized home/index page
