@@ -4,6 +4,7 @@ var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
 var session = require('express-session');
+var cookieParser = require('cookie-parser');
 var Promise = require('bluebird');
 
 var db = require('./app/config');
@@ -24,19 +25,26 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-app.use(session({
-  genid: function(req) {
-    return genuuid(); // use UUIDs for session IDs
-  },
-  secret: 'keyboard cat',
-  resave: true,
-  saveUninitialized: true
-}));
+app.use(cookieParser("lol seriously"));
+app.use(session());
+
+function restrict(req, res, next) {
+  if(req.session.user) {
+    next();
+  } else {
+    req.session.error = "Access denied";
+    res.redirect('/login');
+  }
+}
 
 app.get('/',
 function(req, res) {
-  res.render('index');
-  // res.render('login');
+  restrict(req, res, function() {
+    console.log("GETTING REDIRECTED")
+    res.render('index');
+  })
+  // res.render('index');
+  // res.render('index');
 });
 
 app.get('/create',
@@ -143,16 +151,20 @@ app.post('/login', function(req, res) {
   new User({username: username}).fetch().then(function(found) {
     if(found) {
       // Check the given password against the hashed password stored for username in database
-      var hashedpassword = found.password;
-      var transformedpw = Promise.promisify(bcrypt.hash)(req.body.password, null, null).bind(this).then(function(hash) {
-        console.log("PROMISED PASSWORD: ", hash);
-      }).then(function(hash) {
-        if (hash === hashedpassword) {
-          // Give user a session token
-          //app.use(session({secret: 'tyler collin pp'}));
-          // Redirect to their individualized home/index page
+      var hashedpassword = found.attributes.password;
+      console.log(found, "this is the found object");
+      Promise.promisify(bcrypt.compare)(req.body.password, hashedpassword).bind(this).then(function(result) {
+        console.log(result, "this is result");
+        if (result === true) {
+          req.session.regenerate(function() {
+            req.session.user = username;
+            res.redirect('/index');
+          });
         }
-      }).get();
+        else {
+          res.redirect('/login');
+        }
+      });
       // bcrypt.hash(req.body.password, null, null, function(err, result) {
       //   if(err) { throw err; }
       //   console.log("FOUND PASSWORD: ", hashedpassword);
@@ -173,8 +185,11 @@ app.post('/login', function(req, res) {
   });
 });
 
-
-
+app.get('/logout', function(req, res) {
+  req.session.destroy(function() {
+    res.redirect('/login');
+  });
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
@@ -182,7 +197,7 @@ app.post('/login', function(req, res) {
 // If the short-code doesn't exist, send the user to '/'
 /************************************************************/
 
-app.get('/*', function(req, res) {
+app.get('/*', restrict, function(req, res) {
   new Link({ code: req.params[0] }).fetch().then(function(link) {
     if (!link) {
       res.redirect('/');
