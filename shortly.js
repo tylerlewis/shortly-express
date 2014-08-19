@@ -23,26 +23,28 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 
-app.get('/', 
+app.get('/',
+function(req, res) {
+  res.render('index');
+  // res.render('login');
+});
+
+app.get('/create',
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
-function(req, res) {
-  res.render('index');
-});
-
-app.get('/links', 
+app.get('/links',
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
+  console.log("getting here");
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
@@ -66,6 +68,8 @@ function(req, res) {
         });
 
         link.save().then(function(newLink) {
+          // console.log(newLink, "this is newLink");
+          // console.log(newLink.url, "this is the link's URL");
           Links.add(newLink);
           res.send(200, newLink);
         });
@@ -77,8 +81,62 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
 
+app.post('/signup', function(req, res) {
+  // Parse request from /signup.
+  var username = req.body.username;
+  var password = req.body.password;
 
+  new User({username: username}).fetch().then(function(found) {
+    // Creating new user model with attributes username and password. Fetch it. If found, then
+    if (found) {
+      // Tell the user to pick a different username
+      console.log("found user...");
+      res.send(200, found.attributes);
+    }
+    // Otherwise create/save that user in our db.
+    // If signup is successful, render index otherwise throw error
+    else {
+      var user = new User({
+        username: username,
+        password: password
+      });
+      console.log("NEW USER: ", user);
+      user.save().then(function(newUser) {
+        Users.add(newUser);
+        // res.send(200, newUser);
+        // Send (redirect URL) to index.html instead of rendering it
+        res.render('index');
+       // Users[0].fetch();
+      });
+    }
+  });
+});
+
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.post('/login', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({username: username}).fetch().then(function(found) {
+    if(found) {
+      // Check the given password against the hashed password stored for username in database
+
+        // If password checks out,
+          // Give the user a session token
+          // Redirect to their individualized home/index page
+        // Else, inform them their password was incorrect, let them try again
+    } else {
+      // Inform the user that the entered username was not found, let them try a different username
+    }
+  });
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
