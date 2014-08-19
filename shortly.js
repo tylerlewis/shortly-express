@@ -3,6 +3,8 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
+var session = require('express-session');
+var Promise = require('bluebird');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -22,7 +24,14 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-
+app.use(session({
+  genid: function(req) {
+    return genuuid(); // use UUIDs for session IDs
+  },
+  secret: 'keyboard cat',
+  resave: true,
+  saveUninitialized: true
+}));
 
 app.get('/',
 function(req, res) {
@@ -96,7 +105,6 @@ app.post('/signup', function(req, res) {
     if (found) {
       // Tell the user to pick a different username
       console.log("FOUND USER!!!!!!!!!!!!!!!!!!!!!!!");
-      res.send(200, found.attributes);
     }
     // Otherwise create/save that user in our db.
     // If signup is successful, render index otherwise throw error
@@ -106,7 +114,6 @@ app.post('/signup', function(req, res) {
         password: password
       });
 
-      console.log(user, "this is the user object after it gets instantiated");
       user.save().then(function(newUser) {
         console.log('NEW USER: ', newUser);
         Users.add(newUser);
@@ -129,25 +136,45 @@ app.post('/login', function(req, res) {
   var password = req.body.password;
 
   // Potentially this could be refactored into a checkUser function
-  var checkUser = function(username, password, callback) {
+  // var checkUser = function(username, password, callback) {
 
-  };
+  // };
 
   new User({username: username}).fetch().then(function(found) {
     if(found) {
       // Check the given password against the hashed password stored for username in database
-      console.log('FOUND USER: ',found);
+      var hashedpassword = found.password;
+      var transformedpw = Promise.promisify(bcrypt.hash)(req.body.password, null, null).bind(this).then(function(hash) {
+        console.log("PROMISED PASSWORD: ", hash);
+      }).then(function(hash) {
+        if (hash === hashedpassword) {
+          // Give user a session token
+          //app.use(session({secret: 'tyler collin pp'}));
+          // Redirect to their individualized home/index page
+        }
+      }).get();
+      // bcrypt.hash(req.body.password, null, null, function(err, result) {
+      //   if(err) { throw err; }
+      //   console.log("FOUND PASSWORD: ", hashedpassword);
+      //   if(result === hashedpassword) {
+      //     console.log("this is only if result === found.password");
+      //   }
+      // });
+      // console.log('FOUND USER: ',found);
       //checkUser(user, cb);
       // Where are we going to push the password to get hashed and then validate it in the db?
+
         // If password checks out,
           // Give the user a session token
-          // Redirect to their individualized home/index page
         // Else, inform them their password was incorrect, let them try again
     } else {
       // Inform the user that the entered username was not found, let them try a different username
     }
   });
 });
+
+
+
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
