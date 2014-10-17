@@ -135,3 +135,11 @@ form input[type=text], form input[type=password] {
 .creator .message {
   clear: both;
 }
+
+.logout {
+  margin-right: 5px;
+  padding: 0px auto;
+  height: 40px;
+  width: 100px;
+  float: right;
+}
